@@ -1,0 +1,19 @@
+{
+	"name": "mihaildev/yii2-backend",
+	"description": "The Backend extension for the Yii2 framework",
+	"keywords": ["yii", "backend"],
+	"type": "yii2-extension",
+	"license": "BSD-3-Clause",
+	"authors": [
+		{
+			"name": "Mihail",
+			"email": "mihail.kucher@gmail.com"
+		}
+	],
+	"require": {
+		"yiisoft/yii2": "*"
+	},
+	"autoload": {
+		"psr-0": { "app\\backend\\": "" }
+	}
+}
