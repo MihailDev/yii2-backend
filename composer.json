@@ -16,5 +16,8 @@
 	},
 	"autoload": {
 		"psr-4": { "mihaildev\\backend\\": "" }
+	},
+	"extra": {
+	  "bootstrap": "mihaildev\\backend\\Component"
 	}
 }
