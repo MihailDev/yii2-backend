@@ -4,6 +4,7 @@
 	"keywords": ["yii", "backend"],
 	"type": "yii2-extension",
 	"license": "BSD-3-Clause",
+    "minimum-stability": "dev",
 	"authors": [
 		{
 			"name": "Mihail",
@@ -14,7 +15,6 @@
 		"yiisoft/yii2": "*"
 	},
 	"autoload": {
-		"psr-0": { "app\\backend\\": "" }
-	},
-    "target-dir": "app/backend"
+		"psr-4": { "mihaildev\\backend\\": "" }
+	}
 }

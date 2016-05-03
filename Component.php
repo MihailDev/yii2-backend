@@ -1,135 +1,82 @@
 <?php
 
 
-namespace app\backend;
+namespace mihaildev\backend;
 
 use Yii;
-use yii\base\InvalidConfigException;
+use yii\base\Application;
+use yii\base\BootstrapInterface;
 
 /**
- * @property bool $isFrontEnd
  * @property bool $isBackEnd
  */
 
 
-class Component extends \yii\base\Component{
+class Component extends \yii\base\Component implements BootstrapInterface{
 
+    const EVENT_BACKEND_INIT  = 'EVENT_BACKEND_INIT';
+    const EVENT_FRONTEND_INIT = 'EVENT_FRONTEND_INIT';
 
+    public $onBackend;
 
-    public $prefix = 'backend';
-    public $indexAction = 'site/backend';
-    public $backend = [];
-    public $frontend = [];
+    public $onFrontend;
 
-    private $_isBackEnd = false;
-    private $_backEndUrlManager;
 
     public function init(){
-        $pos = stripos(Yii::$app->request->getAbsoluteUrl(), $this->createAbsoluteUrl($this->indexAction));
-        if($pos === 0)
-            $this->_isBackEnd = true;
 
-
-
-        if($this->isBackEnd){
-           $this->initBackEnd();
-        }else{
-            $this->initFrontEnd();
-        }
     }
 
-    private function initApp($options){
-        $preload = [];
-        if(isset($options['preload'])){
-            $preload = $options['preload'];
-
-            unset($options['preload']);
-        }
-
-        Yii::configure(Yii::$app, $options);
-
-        foreach ($preload as $id) {
-            if (Yii::$app->hasComponent($id)) {
-                Yii::$app->getComponent($id);
-            } elseif (Yii::$app->hasModule($id)) {
-                Yii::$app->getModule($id);
-            } else {
-                throw new InvalidConfigException("Unknown component or module: $id");
-            }
-        }
-    }
-
-    private function initBackEnd(){
-        if(!isset($this->backend['components']['view'])){
-            if(isset($this->backend['theme'])){
-                $this->backend['components']['view'] = [
-                    'class' => 'yii\web\View',
-                    'theme' => [
-                        'basePath' => '@webroot/'.$this->backend['theme'],
-                        'baseUrl' => '@web/'.$this->backend['theme'],
-                    ],
-                ];
-            }else{
-                $this->backend['components']['view'] = ['class' => 'yii\web\View'];
-            }
-        }
-
-        unset($this->backend['theme']);
-
-        $this->initApp($this->backend);
-
-        Yii::$app->setComponent('urlManager', $this->getBackEndUrlManager());
-    }
-
-    private function initFrontEnd(){
-        if(isset($this->frontend['theme'])){
-            $this->frontend['components']['view'] = [
-                'class' => 'yii\web\View',
-                'theme' => [
-                    'basePath' => '@webroot/'.$this->backend['theme'],
-                    'baseUrl' => '@web/'.$this->backend['theme'],
-                ],
-            ];
-        }
-
-        unset($this->frontend['theme']);
-
-
-        $this->initApp($this->frontend);
-    }
+    private $_isBackEnd;
 
     public function getIsBackEnd(){
         return $this->_isBackEnd;
     }
 
-    public function getIsFrontEnd(){
-        return (!$this->_isBackEnd);
+    static function detectBackend(){
+        /** @var Component $backend */
+        $backend = Yii::$app->get('backend');
+
+        if(Yii::$app->controller instanceof BackendControllerInterface)
+            $backend->initBackend();
+        else
+            $backend->initFronted();
     }
 
-    private function getBackEndUrlManager(){
-        if(null == $this->_backEndUrlManager)
-            $this->_backEndUrlManager = Yii::createObject([
-                'class' => 'yii\web\UrlManager',
-                'enablePrettyUrl' => true,
-                'showScriptName' => false,
-                'rules' => [
-                    $this->prefix                               => $this->indexAction,
-                    $this->prefix.'/<_m:\w+>/<_c:\w+>/<_a:\w+>' => '<_m>/<_c>/<_a>',
-                    $this->prefix.'/<_c:\w+>/<_a:\w+>'          => '<_c>/<_a>',
-                    $this->prefix.'/<_c:\w+>'                   => '<_c>',
+    /**
+     * Bootstrap method to be called during application bootstrap stage.
+     * @param Application $app the application currently running
+     */
+    public function bootstrap($app)
+    {
+        if(!($app instanceof \yii\web\Application))
+            return;
 
-                ]
-            ]);
+        if(!$app->has('backend'))
+            $app->set('backend', static::className());
 
-        return $this->_backEndUrlManager;
+        if($app->get('backend') instanceof Component)
+            $app->on(\yii\web\Application::EVENT_BEFORE_ACTION,[self::className(), 'detectBackend']);
     }
 
-    public function createUrl($route, $params = []){
-        return $this->getBackEndUrlManager()->createUrl($route, $params);
+    public function initBackend()
+    {
+        $this->_isBackEnd = true;
+
+        if(is_callable($this->onBackend))
+            call_user_func($this->onBackend);
+
+        $this->trigger(self::EVENT_BACKEND_INIT);
+
     }
 
-    public function createAbsoluteUrl($route, $params = []){
-        return $this->getBackEndUrlManager()->createAbsoluteUrl($route, $params);
-    }
+    public function initFronted()
+    {
+        $this->_isBackEnd = false;
 
-} 
+        if(is_callable($this->onFrontend))
+            call_user_func($this->onFrontend);
+
+        $this->trigger(self::EVENT_FRONTEND_INIT);
+
+    }
+}
